@@ -1,4 +1,5 @@
-#!/usr/local/bin/python3
+#/usr/local/bin/python3
+#!/usr/bin/python3
 
 import sys
 
@@ -91,9 +92,17 @@ def delsnap_ec2 (days, region) :
                 size_counter = size_counter + ec2snapshot['VolumeSize']
 
             except ClientError as err:
-                print ('Unable to delete snapshot {snapshot}.'.format(snapshot=ec2snapshot['SnapshotId']))
-                print ("Error: {0}".format(err))
-                #return
+                if err.response['Error']['Code'] == 'DryRunOperation' :
+                    print (err.response['Error']['Message'])
+
+                    deletion_counter = deletion_counter + 1
+                    size_counter = size_counter + ec2snapshot['VolumeSize']
+
+                else :
+                    print ('Unable to delete snapshot {snapshot}.'.format(snapshot=ec2snapshot['SnapshotId']))
+                    print ("Error: {0}".format(err))
+                    print (err.response['Error']['Code'])
+                    return
 
     print ('Deleted {number} snapshots totalling {size} GB in region {region}'.format(
         number=deletion_counter,
@@ -152,6 +161,8 @@ def delsnap_rds (days, region) :
                 rdsresponse = rdsclient.delete_db_snapshot(
                     DBSnapshotIdentifier=rdssnapshot['DBSnapshotIdentifier']
                 )
+            else :
+                print ('Request would have succeeded, but DryRun flag is set.')
 
     print ('Deleted {number} snapshots totalling {size} GB in region {region}'.format(
         number=deletion_counter,

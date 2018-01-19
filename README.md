@@ -1,4 +1,4 @@
-#CSM_Cleanup
+CSM_Cleanup
 ======================
 A project to clean up abandoned snapshots that were created by Dell EMC Cloud Snapshot Manager (aka Amazonite).
 
@@ -9,7 +9,7 @@ This utility can be used to remove snapshots that were created by Dell EMC Cloud
 
 CSM_Cleanup is designed to run as a standalone Python script or as a Lambda script in Amazon Web Services (AWS).
 
-### Staandalone Python
+### Standalone Python
 
 1. Install Python3
   * This script was developed and tested using Python 3.6.4.
