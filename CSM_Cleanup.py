@@ -1,6 +1,3 @@
-#/usr/local/bin/python3
-#!/usr/bin/python3
-
 import sys
 
 import boto3
@@ -12,6 +9,7 @@ import pprint
 product = "Dell EMC Cloud Snapshot Manager (aka Amazonite)"
 defaultdays = 60
 dryrun = False
+regions = []
 
 parser = argparse.ArgumentParser(description='Remove snapshots that were abandoned by {product}'.format(product=product))
 parser.add_argument('--expire', metavar='DD', type=int, default=defaultdays,
@@ -37,12 +35,14 @@ filters = [{'Name':'tag:source', 'Values':['amazonite']}]
 sumnum = {}
 sumsize = {}
 
+print ()
 print ('Deleting any snapshots older than {days} days'.format(days=days))
+print ()
 
 def delsnap_ec2 (days, region) :
-    print ('Deleting {product} snapshots in region {region}'.format(
-        region=region,
-        product=product,
+    print ('Deleting {product} EC2 snapshots in region {region}'.format(
+        region = region,
+        product = product,
     ))
     try :
         ec2client = boto3.client('ec2', region_name=region)
@@ -71,7 +71,7 @@ def delsnap_ec2 (days, region) :
         start_time = ec2snapshot['StartTime']
 
         if start_time < delete_time:
-            print ('Deleting {description} snapshot: {id}, created on {start_time} of size {volume_size} GB in {region}'.format(
+            print ('Deleting {description} EC2 snapshot: {id}, created on {start_time} of size {volume_size} GB in {region}'.format(
                 id=ec2snapshot['SnapshotId'],
                 start_time=ec2snapshot['StartTime'],
                 volume_size=ec2snapshot['VolumeSize'],
@@ -104,7 +104,7 @@ def delsnap_ec2 (days, region) :
                     print (err.response['Error']['Code'])
                     return
 
-    print ('Deleted {number} snapshots totalling {size} GB in region {region}'.format(
+    print ('Deleted {number} EC2 snapshots totalling {size} GB in region {region}'.format(
         number=deletion_counter,
         size=size_counter,
         region=region,
@@ -115,7 +115,7 @@ def delsnap_ec2 (days, region) :
     sumsize[region] = size_counter
 
 def delsnap_rds (days, region) :
-    print ('Deleting {product} snapshots in region {region}'.format(
+    print ('Deleting {product} RDS snapshots in region {region}'.format(
         region=region,
         product=product,
     ))
@@ -164,7 +164,7 @@ def delsnap_rds (days, region) :
             else :
                 print ('Request would have succeeded, but DryRun flag is set.')
 
-    print ('Deleted {number} snapshots totalling {size} GB in region {region}'.format(
+    print ('Deleted {number} RDS snapshots totalling {size} GB in region {region}'.format(
         number=deletion_counter,
         size=size_counter,
         region=region,
@@ -174,17 +174,21 @@ def delsnap_rds (days, region) :
     sumnum[region] = deletion_counter
     sumsize[region] = size_counter
 
-if (service == 'EC2') or (service == 'all') :
-    if 'all' in args.regions :
-        regions = sorted([r.name for r in ec2.regions()])
-    else :
-        regions = sorted(args.regions)
+if 'all' in args.regions :
+    ec2 = boto3.client('ec2')
+    response = ec2.describe_regions()
+    for region in response['Regions']:
+        regions.append(region['RegionName'])
+        regions.sort()
+else :
+    regions = sorted(args.regions)
 
+if (service == 'EC2') or (service == 'all') :
     for region in regions :
         delsnap_ec2 (days,region)
 
-        print ()
-        print ('Summary of EC2 removals:')
+    print ()
+    print ('Summary of EC2 removals:')
 
     for region in regions :
         print ('Deleted {number} snapshots totalling {size} GB in region {region}'.format(
@@ -192,14 +196,9 @@ if (service == 'EC2') or (service == 'all') :
             size=sumsize[region],
             region=region,
             ))
+    print ()
 
 if (service == 'RDS') or (service == 'all') :
-
-    if 'all' in args.regions :
-        regions = sorted([r.name for r in rds.regions()])
-    else :
-        regions = sorted(args.regions)
-
     for region in regions :
         delsnap_rds (days,region)
 
@@ -212,3 +211,4 @@ if (service == 'RDS') or (service == 'all') :
             size=sumsize[region],
             region=region,
             ))
+    print ()
